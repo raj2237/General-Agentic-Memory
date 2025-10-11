@@ -41,11 +41,6 @@ A general memory system for agents, powered by deep-research
 * <a href='#news'>🔥 News</a>
 * <a href='#structure'> 📁Project Structure</a>
 * <a href='#pypi-mode'>🎯 Quick Start</a>
-  * <a href='pypi-mode'>PYPI Install MemoryOS</a>
-  * <a href='#MCP-mode'>MemoryOS-MCP</a>
-  * <a href='#memoryos_chromadb-getting-started'>MemoryOS-chromadb</a>
-  * <a href='#docker-getting-started'>Docker</a>
-  * <a href='#playground-getting-started'>Playground</a>
 * <a href='#todo'>☑️ Todo List</a>
 * <a href='#reproduce'>🔬 How to Reproduce the Results in the Paper </a>
 * <a href='#doc'>📖 Documentation </a>
