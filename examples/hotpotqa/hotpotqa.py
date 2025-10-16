@@ -9,8 +9,8 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 import time
 
 # === Project-local imports (adapt to your repo layout) ===
-from agents_new import MemoryAgent, RetrievalAgent
-from llm_call import HFModel, OpenRouterModel
+from gam.agents import MemoryAgent, RetrievalAgent
+from gam.llm_call import HFModel, OpenRouterModel
 
 
 # =====================

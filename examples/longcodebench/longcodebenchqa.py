@@ -25,8 +25,8 @@ import threading
 import queue
 
 import tiktoken
-from llm_call import OpenRouterModel
-from agents_new import MemoryAgent, DeepResearchAgent
+from gam.llm_call import OpenRouterModel
+from gam.agents import MemoryAgent, DeepResearchAgent
 
 
 # ========== 全局配置 ==========

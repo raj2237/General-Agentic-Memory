@@ -6,8 +6,8 @@ from typing import Any, Dict, List, Optional, Tuple
 from tqdm import tqdm
 
 # === Project-local imports ===
-from agents_new import MemoryAgent, DeepResearchAgent
-from llm_call import OpenRouterModel   # 使用 OpenRouterModel（你提供的）  # noqa: E402
+from gam.agents import MemoryAgent, DeepResearchAgent
+from gam.llm_call import OpenRouterModel   # 使用 OpenRouterModel（你提供的）  # noqa: E402
 
 
 # ========== 全局配置（可用命令行覆盖） ==========

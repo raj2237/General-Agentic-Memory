@@ -60,7 +60,28 @@ A general memory system for agents, powered by deep-research
 ## 🏗️ Project Structure
 
 ```
-
+general-agentic-memory/
+├── gam/                          # 核心 GAM 包
+│   ├── __init__.py              # 包初始化文件
+│   ├── agents.py                # 智能代理实现 (MemoryAgent, DeepResearchAgent)
+│   ├── llm_call.py              # LLM 调用接口 (OpenRouter, HuggingFace)
+│   └── prompts.py               # 提示词模板
+├── examples/                     # 示例和基准测试
+│   ├── hotpotqa/                # HotpotQA 基准测试
+│   │   └── hotpotqa.py
+│   ├── locomo/                  # LoCoMo 基准测试
+│   │   ├── locomoqa.py
+│   │   └── locomo_eval.py
+│   ├── longbenchv2/             # LongBench v2 基准测试
+│   │   └── longbenchqa.py
+│   └── longcodebench/           # LongCodeBench 基准测试
+│       └── longcodebenchqa.py
+├── assets/                      # 资源文件
+│   └── GAM-memory.png
+├── setup.py                     # 安装配置
+├── pyproject.toml              # 现代项目配置
+├── requiremets.txt             # 依赖列表
+└── README.md                   # 项目说明
 ```
 
 
