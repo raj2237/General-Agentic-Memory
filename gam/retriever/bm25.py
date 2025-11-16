@@ -1,4 +1,4 @@
-import os, json, subprocess, shutil
+import os, json, subprocess, shutil, time
 from typing import Dict, Any, List
 
 try:
@@ -8,6 +8,40 @@ except ImportError:
 
 from gam.retriever.base import AbsRetriever
 from gam.schemas import InMemoryPageStore, Hit, Page
+
+
+def _safe_rmtree(path: str, max_retries: int = 3, delay: float = 0.5) -> None:
+    """
+    安全地删除目录树，带重试机制
+    
+    Args:
+        path: 要删除的目录路径
+        max_retries: 最大重试次数
+        delay: 重试间隔（秒）
+    """
+    if not os.path.exists(path):
+        return
+    
+    for attempt in range(max_retries):
+        try:
+            shutil.rmtree(path)
+            # 确保目录真的被删除了
+            if not os.path.exists(path):
+                return
+            time.sleep(delay)
+        except OSError as e:
+            if attempt == max_retries - 1:
+                # 最后一次尝试仍然失败，强制删除
+                try:
+                    # 尝试更激进的删除方式
+                    import subprocess
+                    subprocess.run(['rm', '-rf', path], check=False, capture_output=True)
+                    if not os.path.exists(path):
+                        return
+                except Exception:
+                    pass
+                raise OSError(f"无法删除目录 {path}: {e}")
+            time.sleep(delay)
 
 
 class BM25Retriever(AbsRetriever):
@@ -45,24 +79,30 @@ class BM25Retriever(AbsRetriever):
         self.searcher = LuceneSearcher(self._lucene_dir())  # type: ignore
 
     def build(self, page_store: InMemoryPageStore) -> None:
+        # 0. 首先清理所有旧的目录和文件，确保干净的状态
+        # 使用安全删除函数，带重试机制
+        _safe_rmtree(self._lucene_dir())
+        _safe_rmtree(self._docs_dir())
+        
+        # 1. 创建必要的目录
         os.makedirs(self.index_dir, exist_ok=True)
         os.makedirs(self._docs_dir(), exist_ok=True)
 
-        # 1. dump pages -> documents.jsonl (pyserini需要 id + contents)
+        # 2. dump pages -> documents.jsonl (pyserini需要 id + contents)
         pages = page_store.load()
         docs_path = os.path.join(self._docs_dir(), "documents.jsonl")
         with open(docs_path, "w", encoding="utf-8") as f:
             for i, p in enumerate(pages):
                 text = (p.header + " " + p.content).strip()
+                text = '\n'.join(p.content.split('\n')[1:])
+                text = p.content
                 json.dump({"id": str(i), "contents": text}, f, ensure_ascii=False)
                 f.write("\n")
 
-        # 2. 清理旧的 lucene index
-        if os.path.exists(self._lucene_dir()):
-            shutil.rmtree(self._lucene_dir())
+        # 3. 确保 lucene index 目录是干净的
         os.makedirs(self._lucene_dir(), exist_ok=True)
 
-        # 3. 调 pyserini 构建 Lucene 索引
+        # 4. 调 pyserini 构建 Lucene 索引
         cmd = [
             "python", "-m", "pyserini.index.lucene",
             "--collection", "JsonCollection",
@@ -72,14 +112,31 @@ class BM25Retriever(AbsRetriever):
             "--threads", str(self.config.get("threads", 1)),
             "--storePositions", "--storeDocvectors", "--storeRaw"
         ]
-        subprocess.run(cmd, check=True)
+        
+        # 添加重试机制，防止偶发的构建失败
+        max_build_retries = 2
+        for attempt in range(max_build_retries):
+            try:
+                subprocess.run(cmd, check=True, capture_output=True, text=True)
+                break
+            except subprocess.CalledProcessError as e:
+                if attempt == max_build_retries - 1:
+                    print(f"[ERROR] Pyserini 索引构建失败:")
+                    print(f"  stdout: {e.stdout}")
+                    print(f"  stderr: {e.stderr}")
+                    raise
+                print(f"[WARN] Pyserini 索引构建失败，重试 {attempt + 1}/{max_build_retries}...")
+                # 清理失败的索引
+                _safe_rmtree(self._lucene_dir())
+                os.makedirs(self._lucene_dir(), exist_ok=True)
+                time.sleep(1)
 
-        # 4. 把 pages 也固化到磁盘，供 load() / search() 反查
+        # 5. 把 pages 也固化到磁盘，供 load() / search() 反查
         # 创建临时 PageStore 实例来保存
         temp_page_store = InMemoryPageStore(dir_path=self._pages_dir())
         temp_page_store.save(pages)
         
-        # 5. 更新内存镜像
+        # 6. 更新内存镜像
         self.pages = pages
         self.searcher = LuceneSearcher(self._lucene_dir())  # type: ignore
 

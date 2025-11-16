@@ -15,6 +15,7 @@ class DenseRetrieverConfig:
     batch_size: int = 32
     max_length: int = 512
     index_dir: str = "./index/dense"
+    api_url: str | None = None
 
 
 @dataclass

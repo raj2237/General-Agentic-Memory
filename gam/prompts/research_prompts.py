@@ -8,6 +8,20 @@ QUESTION:
 MEMORY:
 {memory}
 
+PLANNING PROCEDURE
+1. Interpret the QUESTION using the context in MEMORY. Identify what is need to satisfy the QUESTION.
+2. Break that need into concrete "info needs": specific sub-questions you must answer to fully respond to the QUESTION.
+3. For each info need, decide which retrieval tools are useful. You may assign multiple tools to the same info need:
+   - Use "keyword" for exact entities / functions / key attributes.
+   - Use "vector" for conceptual understanding.
+   - Use "page_index" if MEMORY already points to clearly relevant page indices.
+4. Build the final plan:
+   - "info_needs": a list of all the specific sub-questions / missing facts you still need.
+   - "tools": which of ["keyword","vector","page_index"] you will actually use in this plan. This can include more than one tool.
+   - "keyword_collection": a list of short keyword-style queries you will issue.
+   - "vector_queries": a list of semantic / natural-language queries you will issue.
+   - "page_index": a list of integer page indices you plan to read fully.
+
 AVAILABLE RETRIEVAL TOOLS:
 All of the following retrieval tools are available to you. You may select one, several, or all of them in the same plan to maximize coverage. Parallel use of multiple tools is allowed and encouraged if it helps answer the QUESTION.
 
@@ -34,24 +48,11 @@ All of the following retrieval tools are available to you. You may select one, s
      MEMORY may mention specific page IDs or indices that correspond to important configs, attributes, or names.
      Use this if you already know specific page indices that should be inspected in full.
    - HOW TO USE:
-     Return a list of those integer page indices (e.g. [0, 2, 5]).
+     Return a list of those integer page indices (e.g. [0, 2, 5]), max 5 pages.
      You MUST NOT invent or guess page indices.
 
-PLANNING PROCEDURE
-1. Interpret the QUESTION using the context in MEMORY. Identify what is still unknown or needs confirmation.
-2. Break that need into concrete "info needs": specific sub-questions you must answer to fully respond to the QUESTION.
-3. For each info need, decide which retrieval tools are useful. You may assign multiple tools to the same info need:
-   - Use "keyword" for exact entities / functions / key attributes.
-   - Use "vector" for conceptual understanding.
-   - Use "page_index" if MEMORY already points to clearly relevant page indices.
-4. Build the final plan:
-   - "info_needs": a list of all the specific sub-questions / missing facts you still need.
-   - "tools": which of ["keyword","vector","page_index"] you will actually use in this plan. This can include more than one tool.
-   - "keyword_collection": a list of short keyword-style queries you will issue.
-   - "vector_queries": a list of semantic / natural-language queries you will issue.
-   - "page_index": a list of integer page indices you plan to read fully.
-
 RULES
+- Avoid simple repetition. Whether it's keywords or sentences for search, make them as independent as possible rather than duplicated.
 - Be specific. Avoid vague items like "get more details" or "research background".
 - Every string in "keyword_collection" and "vector_queries" must be directly usable as a retrieval query.
 - You may include multiple tools. Do NOT limit yourself to a single tool if more than one is useful.
@@ -59,16 +60,21 @@ RULES
 - Do NOT invent page indices. If you are not sure about a page index, return [].
 - You are only planning retrieval. Do NOT answer the QUESTION here.
 
+THINKING STEP
+- Before producing the output, think through the procedure and choices inside <think>...</think>.
+- Keep the <think> concise but sufficient to validate decisions.
+- After </think>, output ONLY the JSON object specified below. The <think> section must NOT be included in the JSON.
+
 OUTPUT JSON SPEC
 Return ONE JSON object with EXACTLY these keys:
 - "info_needs": array of strings (required)
 - "tools": array of strings from ["keyword","vector","page_index"] (required)
 - "keyword_collection": array of strings (required)
 - "vector_queries": array of strings (required)
-- "page_index": array of integers (required)
+- "page_index": array of integers (required), max 5.
 
 All keys MUST appear.
-Return ONLY the JSON object. Do NOT include any commentary or explanation outside the JSON.
+After the <think> section, return ONLY the JSON object. Do NOT include any commentary or explanation outside the JSON.
 """
 
 Integrate_PROMPT = """
@@ -107,7 +113,7 @@ INSTRUCTIONS:
    - Ignore anything unrelated to the QUESTION.
 4. Synthesis:
    - Merge the selected content from RESULT with the selected content from EVIDENCE_CONTEXT.
-   - The merged text MUST read as one coherent factual summary focused only on the QUESTION.
+   - The merged text MUST read as one coherent factual summary related to the QUESTION (not the direct answer).
    - The merged summary MUST collect all important factual information needed to answer the QUESTION, so it can stand alone later without needing RESULT or EVIDENCE_CONTEXT.
    - Do NOT add interpretation, recommendations, or conclusions beyond what is explicitly stated in RESULT or EVIDENCE_CONTEXT.
 
@@ -120,13 +126,18 @@ RULES:
 - Do NOT include any keys other than "content" and "sources".
 - "sources" should on incluede the page_ids of the pages that supported the included facts.
 
+THINKING STEP
+- Before producing the output, think about selection and synthesis steps inside <think>...</think>.
+- Keep the <think> concise but sufficient to ensure correctness and relevance.
+- After </think>, output ONLY the JSON object. The <think> section must NOT be included in the JSON.
+
 OUTPUT JSON SPEC:
 Return ONE JSON object with EXACTLY:
-- "content": string. This is the UPDATED_RESULT, i.e. the integrated final answer to the QUESTION.
+- "content": string. This is the UPDATED_RESULT, i.e. the integrated final information related to the QUESTION, if there not exist any useful information, just provide "".
 - "sources": array of strings/objects.
 
 Both keys MUST be present.
-Return ONLY the JSON object. Do NOT output Markdown, comments, headings, or explanations outside the JSON.
+After the <think> section, return ONLY the JSON object. Do NOT output Markdown, comments, headings, or explanations outside the JSON.
 """
 
 InfoCheck_PROMPT = """
@@ -156,6 +167,11 @@ EVALUATION PROCEDURE:
    - "enough" = true  ONLY IF RESULT covers all required pieces with sufficient clarity and specificity.
    - "enough" = false otherwise.
 
+THINKING STEP
+- Before producing the output, perform your decomposition and evaluation inside <think>...</think>.
+- Keep the <think> concise but ensure it verifies completeness rigorously.
+- After </think>, output ONLY the JSON object with the key specified below. The <think> section must NOT be included in the JSON.
+
 OUTPUT REQUIREMENTS:
 Return ONE JSON object with EXACTLY this key:
 - "enough": boolean. true if RESULT is sufficient to answer REQUEST fully; false otherwise.
@@ -164,7 +180,7 @@ RULES:
 - Do NOT invent facts.
 - Do NOT answer REQUEST.
 - Do NOT include any explanation, reasoning, or extra keys.
-- Return ONLY the JSON object.
+- After the <think> section, return ONLY the JSON object.
 """
 
 GenerateRequests_PROMPT = """
@@ -193,15 +209,20 @@ INSTRUCTIONS:
 4. Rank the questions from most critical missing information to least critical.
 5. Produce at most 5 questions.
 
+THINKING STEP
+- Before producing the output, reason about gaps and prioritize inside <think>...</think>.
+- Keep the <think> concise but ensure prioritization makes sense.
+- After </think>, output ONLY the JSON object specified below. The <think> section must NOT be included in the JSON.
+
 OUTPUT FORMAT:
 Return ONE JSON object with EXACTLY this key:
 - "new_requests": array of strings (0 to 5 items). Each string is one retrieval question.
 
 RULES:
 - Do NOT include any extra keys besides "new_requests".
-- Do NOT include explanations, reasoning steps, or Markdown outside the JSON.
+- After the <think> section, do NOT include explanations, reasoning steps, or Markdown outside the JSON.
 - Do NOT generate vague requests like "Get more info".
 - Do NOT answer REQUEST yourself.
 - Do NOT invent facts that are not asked by REQUEST.
-Return ONLY the JSON object.
+After the <think> section, return ONLY the JSON object.
 """

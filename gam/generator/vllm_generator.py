@@ -112,11 +112,13 @@ class VLLMGenerator(AbsGenerator):
         except Exception:
             pass
 
+        text = text.split("</think>")[-1]
+
         out: Dict[str, Any] = {"text": text, "json": None, "response": resp.model_dump()}
         if schema is not None:
             # vLLM 的 guided_json 会尽量保证合法 JSON，但仍建议做一次解析
             try:
-                out["json"] = json.loads(text)
+                out["json"] = json.loads(text[text.find('{'): text.rfind('}') + 1])
             except Exception:
                 out["json"] = None
         return out
