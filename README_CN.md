@@ -116,7 +116,7 @@ general-agentic-memory/
 
 ```bash
 # 克隆仓库
-git clone https://github.com/your-username/general-agentic-memory.git
+git clone https://github.com/VectorSpaceLab/general-agentic-memory.git
 cd general-agentic-memory
 
 # 安装依赖
@@ -296,12 +296,12 @@ python -m eval.run \
 
 ### 🎯 联系我们
 
-- GitHub Issues: [报告 bug 或请求功能](https://github.com/your-username/general-agentic-memory/issues)
+- GitHub Issues: [报告 bug 或请求功能](https://github.com/VectorSpaceLab/general-agentic-memory/issues)
 - Email: your-email@example.com
 
 ### 🌟 Star 历史
 
-[![Star History Chart](https://api.star-history.com/svg?repos=your-username/general-agentic-memory&type=Date)](https://star-history.com/#your-username/general-agentic-memory&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=VectorSpaceLab/general-agentic-memory&type=Date)](https://star-history.com/#VectorSpaceLab/general-agentic-memory&Date)
 
 ### 🤝 贡献
 
