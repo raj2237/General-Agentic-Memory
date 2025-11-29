@@ -147,22 +147,23 @@ from gam import (
     OpenAIGeneratorConfig,
     InMemoryMemoryStore,
     InMemoryPageStore,
-    IndexRetriever,
-    IndexRetrieverConfig,
-    BM25Retriever,
-    BM25RetrieverConfig,
-    DenseRetriever,
     DenseRetrieverConfig,
+    DenseRetriever,
+    IndexRetrieverConfig,
+    IndexRetriever,
+    BM25RetrieverConfig,
+    BM25Retriever
 )
 
 # 1. Configure and create generator
 gen_config = OpenAIGeneratorConfig(
     model_name="gpt-4o-mini",
-    api_key = os.getenv("OPENAI_API_KEY"),
+    api_key=os.getenv("OPENAI_API_KEY"),
+    base_url="https://api.openai.com/v1",
     temperature=0.3,
     max_tokens = 256
 )
-generator = OpenAIGenerator(gen_config)
+generator = OpenAIGenerator(gen_config.__dict__)
 
 # 2. Create memory and page stores
 memory_store = InMemoryMemoryStore()
@@ -186,7 +187,7 @@ for doc in documents:
     memory_agent.memorize(doc)
 
 # 5. Get memory state
-memory_state = memory_agent.load()
+memory_state = memory_store.load()
 print(f"Built {len(memory_state.abstracts)} memory abstracts")
 
 # 6. Create ResearchAgent for Q&A
@@ -232,7 +233,7 @@ try:
     
     dense_config = DenseRetrieverConfig(
         index_dir=dense_index_dir,
-        model_path="BAAI/bge-m3"
+        model_name="BAAI/bge-m3"
     )
     dense_retriever = DenseRetriever(dense_config.__dict__)
     dense_retriever.build(page_store)
@@ -252,7 +253,7 @@ research_agent = ResearchAgent(**research_agent_kwargs)
 
 # 7. Perform research
 research_result = research_agent.research(
-    question="What is the difference between ML and DL?"
+    "What is the difference between ML and DL?"
 )
 
 research_summary = research_result.integrated_memory
