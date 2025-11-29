@@ -16,7 +16,7 @@ do
     outputdir=$base_outputdir/${dataset}
     
     python3 eval/ruler_test.py \
-        --data /path/to/ruler/data/${dataset}.jsonl \
+        --data ./data/ruler/${dataset}.jsonl \
         --outdir $outputdir \
         --start-idx 0 \
         --max-tokens 2048 \
@@ -29,6 +29,6 @@ do
         --working-api-key "your-openai-api-key" \
         --working-base-url "https://api.openai.com/v1" \
         --working-model "gpt-4o-mini" \
-        --embedding-model-path /path/to/embedding/model
+        --embedding-model-path BAAI/bge-m3
 done
 

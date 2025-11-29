@@ -188,7 +188,7 @@ def _split_with_embedding_model(text: str, max_tokens: int, model_path: str) -> 
         from transformers import AutoTokenizer
         
         # 使用指定的模型 tokenizer
-        tokenizer = AutoTokenizer.from_pretrained(model_path, local_files_only=True)
+        tokenizer = AutoTokenizer.from_pretrained(model_path)
         
         # 编码文本获取 tokens
         tokens = tokenizer.encode(text, add_special_tokens=False)

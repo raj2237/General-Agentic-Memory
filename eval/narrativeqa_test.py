@@ -149,7 +149,7 @@ def _split_with_embedding_model(text: str, max_tokens: int, model_path: str) -> 
         from transformers import AutoTokenizer
         
         # 使用指定的模型 tokenizer
-        tokenizer = AutoTokenizer.from_pretrained(model_path, local_files_only=True)
+        tokenizer = AutoTokenizer.from_pretrained(model_path)
         
         # 编码文本获取 tokens
         tokens = tokenizer.encode(text, add_special_tokens=False)
@@ -606,7 +606,7 @@ def main():
     parser.add_argument("--start-idx", type=int, default=0, help="开始样本索引")
     parser.add_argument("--end-idx", type=int, default=None, help="结束样本索引（不包含），None表示处理所有样本")
     parser.add_argument("--max-tokens", type=int, default=2048, help="每个上下文块的最大 token 数量")
-    parser.add_argument("--embedding-model-path", type=str, default=None, 
+    parser.add_argument("--embedding-model-path", type=str, default="BAAI/bge-m3", 
                         help="Embedding 模型路径，用于精确 token 计算（可选）")
     parser.add_argument("--seed", type=int, default=None, help="随机种子，用于打乱数据集（可选）")
     

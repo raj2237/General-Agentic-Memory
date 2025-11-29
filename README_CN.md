@@ -309,6 +309,7 @@ print(f"研究摘要: {research_summary}")
 # 1. 准备数据集
 mkdir -p data
 # 从上面的链接下载数据集，并按照建议的目录结构放置在 data/ 目录下
+bash scripts/download_data.sh
 
 # 2. 设置环境变量
 export OPENAI_API_KEY="your_api_key_here"
@@ -316,20 +317,16 @@ export OPENAI_API_KEY="your_api_key_here"
 # 3. 运行评估
 
 # HotpotQA
-# (根据要使用的数据集调整 --data-path，例如 data/hotpotqa/eval_400.json)
-bash scripts/eval_hotpotqa.sh --data-path data/hotpotqa/eval_400.json
+bash scripts/eval_hotpotqa.sh
 
 # NarrativeQA
-bash scripts/eval_narrativeqa.sh --data-path data/narrativeqa --max-samples 100
+bash scripts/eval_narrativeqa.sh
 
 # LoCoMo
-bash scripts/eval_locomo.sh --data-path data/locomo10.json
+bash scripts/eval_locomo.sh
 
 # RULER
-bash scripts/eval_ruler.sh --data-path data/ruler/data.jsonl --dataset-name niah_single_1
-
-# 或运行所有评估（确保所有数据集都已准备）
-bash scripts/eval_all.sh
+bash scripts/eval_ruler.sh
 ```
 
 ### 直接使用 Python 运行
@@ -347,7 +344,7 @@ python eval/hotpotqa_test.py \
     --research-model gpt-4o-mini \
     --working-api-key $OPENAI_API_KEY \
     --working-model gpt-4o-mini \
-    --embedding-model-path /path/to/embedding/model
+    --embedding-model-path BAAI/bge-m3
 
 # NarrativeQA
 python eval/narrativeqa_test.py \
@@ -360,7 +357,7 @@ python eval/narrativeqa_test.py \
     --research-model gpt-4o-mini \
     --working-api-key $OPENAI_API_KEY \
     --working-model gpt-4o-mini \
-    --embedding-model-path /path/to/embedding/model
+    --embedding-model-path BAAI/bge-m3
 
 # LoCoMo
 python eval/locomo_test.py \
@@ -383,7 +380,7 @@ python eval/ruler_test.py \
     --research-model gpt-4o-mini \
     --working-api-key $OPENAI_API_KEY \
     --working-model gpt-4o-mini \
-    --embedding-model-path /path/to/embedding/model
+    --embedding-model-path BAAI/bge-m3
 ```
 
 ### 支持的数据集

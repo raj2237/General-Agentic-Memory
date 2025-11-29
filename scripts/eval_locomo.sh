@@ -11,7 +11,7 @@ mkdir -p $outputdir
 
 # Run LoCoMo evaluation
 python3 eval/locomo_test.py \
-    --data /path/to/locomo/dataset.json \
+    --data ./data/locomo/locomo10.json \
     --outdir $outputdir \
     --start-idx 0 \
     --memory-api-key "your-openai-api-key" \

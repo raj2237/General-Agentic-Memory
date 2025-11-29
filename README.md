@@ -311,6 +311,7 @@ Please download them from the original sources and place them under the `data/` 
 mkdir -p data
 # Download the datasets from the links above and place them under data/
 # following the suggested directory structure.
+bash scripts/download_data.sh
 
 # 2. Set environment variables
 export OPENAI_API_KEY="your_api_key_here"
@@ -319,19 +320,16 @@ export OPENAI_API_KEY="your_api_key_here"
 
 # HotpotQA
 # (adjust --data-path according to which split you want to use, e.g. data/hotpotqa/eval_400.json)
-bash scripts/eval_hotpotqa.sh --data-path data/hotpotqa/eval_400.json
+bash scripts/eval_hotpotqa.sh
 
 # NarrativeQA
-bash scripts/eval_narrativeqa.sh --data-path data/narrativeqa --max-samples 100
+bash scripts/eval_narrativeqa.sh
 
 # LoCoMo
-bash scripts/eval_locomo.sh --data-path data/locomo.json
+bash scripts/eval_locomo.sh
 
 # RULER
-bash scripts/eval_ruler.sh --data-path data/ruler/data.jsonl --dataset-name niah_single_1
-
-# Or run all evaluations (make sure all datasets are prepared)
-bash scripts/eval_all.sh
+bash scripts/eval_ruler.sh
 ```
 
 ### Using Python Directly
@@ -349,7 +347,7 @@ python eval/hotpotqa_test.py \
     --research-model gpt-4o-mini \
     --working-api-key $OPENAI_API_KEY \
     --working-model gpt-4o-mini \
-    --embedding-model-path /path/to/embedding/model
+    --embedding-model-path BAAI/bge-m3
 
 # NarrativeQA
 python eval/narrativeqa_test.py \
@@ -362,7 +360,7 @@ python eval/narrativeqa_test.py \
     --research-model gpt-4o-mini \
     --working-api-key $OPENAI_API_KEY \
     --working-model gpt-4o-mini \
-    --embedding-model-path /path/to/embedding/model
+    --embedding-model-path BAAI/bge-m3
 
 # LoCoMo
 python eval/locomo_test.py \
@@ -377,7 +375,7 @@ python eval/locomo_test.py \
 
 # RULER
 python eval/ruler_test.py \
-    --data data/ruler/data/qa_1.jsonl \
+    --data data/ruler/qa_1.jsonl \
     --outdir ./results/ruler/qa_1 \
     --memory-api-key $OPENAI_API_KEY \
     --memory-model gpt-4o-mini \
@@ -385,7 +383,7 @@ python eval/ruler_test.py \
     --research-model gpt-4o-mini \
     --working-api-key $OPENAI_API_KEY \
     --working-model gpt-4o-mini \
-    --embedding-model-path /path/to/embedding/model
+    --embedding-model-path BAAI/bge-m3
 ```
 
 ### Supported Datasets
