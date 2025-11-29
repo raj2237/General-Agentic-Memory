@@ -189,7 +189,7 @@ class BaseBenchmark(ABC):
             retrievers["keyword"] = retriever
         elif self.config.retriever_type == "dense":
             retriever_config = DenseRetrieverConfig(
-                model_name=self.config.embedding_model or "BAAI/bge-base-en-v1.5"
+                model_name=self.config.embedding_model or "BAAI/bge-m3"
             )
             retriever = DenseRetriever(retriever_config.__dict__)
             retriever.build(page_store)
