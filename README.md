@@ -153,9 +153,10 @@ from gam import (
 
 # 1. Configure and create generator
 gen_config = OpenAIGeneratorConfig(
-    model="gpt-4o-mini",
-    api_key=os.getenv("OPENAI_API_KEY"),
-    temperature=0.3
+    model_name="gpt-4o-mini",
+    api_key = os.getenv("OPENAI_API_KEY"),
+    temperature=0.3,
+    max_tokens = 256
 )
 generator = OpenAIGenerator(gen_config)
 
@@ -181,31 +182,34 @@ for doc in documents:
     memory_agent.memorize(doc)
 
 # 5. Get memory state
-memory_state = memory_agent.get_memory_state()
-print(f"Built {len(memory_state.events)} memory events")
+memory_state = memory_agent.load()
+print(f"Built {len(memory_state.abstracts)} memory abstracts")
 
 # 6. Create ResearchAgent for Q&A
-retriever_config = DenseRetrieverConfig(
-    model_path="BAAI/bge-base-en-v1.5"
-)
-retriever = DenseRetriever(
-    config=retriever_config,
-    memory_store=memory_store,
-    page_store=page_store
-)
 
-research_agent = ResearchAgent(
-    generator=generator,
-    retriever=retriever
-)
+retrievers={}
+
+
+research_agent_kwargs = {
+    "page_store": page_store,
+    "memory_store": memory_store,
+    "retrievers": retrievers,
+    "generator": research_generator,
+    "max_iters": 5
+}
+
+research_agent = ResearchAgent(**research_agent_kwargs)
 
 # 7. Perform research
-result = research_agent.research(
-    question="What is the difference between ML and DL?",
-    top_k=3
+research_result = research_agent.research(
+    question="What is the difference between ML and DL?"
 )
 
-print(f"Answer: {result.final_answer}")
+research_summary = research_result.integrated_memory
+
+
+print(f"[OK] Research completed! Iteration count: {len(research_result.raw_memory.get('iterations', []))}")
+print(f"Research Summary: {research_summary}")
 ```
 
 ### 📚 Complete Examples
