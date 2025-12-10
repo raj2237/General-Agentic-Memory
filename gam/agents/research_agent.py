@@ -212,6 +212,14 @@ class ResearchAgent:
           3) Integrate all deduplicated hits together with LLM
         Returns integrated Result.
         """
+
+        # Fallbacks so we always search even if planning returned an empty plan
+        if not plan.tools:
+            plan.tools = ["vector"]
+        if "vector" in plan.tools and not plan.vector_queries:
+            plan.vector_queries = [question]
+        if "keyword" in plan.tools and not plan.keyword_collection:
+            plan.keyword_collection = [question]
         all_hits: List[Hit] = []
 
         # Execute each planned tool and collect all hits
@@ -256,7 +264,12 @@ class ResearchAgent:
 
         # Deduplicate hits by page_id
         if not all_hits:
-            return result
+            # Last-resort vector search with raw question to avoid empty answers
+            fallback_hits = self._search_by_vector([question], top_k=5)
+            if fallback_hits and isinstance(fallback_hits[0], list):
+                all_hits.extend(fallback_hits[0])
+            if not all_hits:
+                return result
         
         # 按 page_id 去重 hits，避免同一个 page 被多个 tool 检索到时重复添加
         unique_hits: Dict[str, Hit] = {}  # page_id -> Hit

@@ -5,6 +5,7 @@ import requests
 from typing import Dict, Any, List, Optional
 from FlagEmbedding import FlagAutoModel
 import faiss
+import shutil
 
 from gam.retriever.base import AbsRetriever
 from gam.schemas import InMemoryPageStore, Hit, Page
@@ -79,7 +80,8 @@ class DenseRetriever(AbsRetriever):
                 import torch
                 has_cuda = torch.cuda.is_available()
                 default_device = "cuda:0" if has_cuda else "cpu"
-                devices = config.get("devices", default_device)
+                devices = "cpu"
+                print("Forced CPU Mode")
                 
                 self.model = FlagAutoModel.from_finetuned(
                     model_name,
@@ -88,7 +90,7 @@ class DenseRetriever(AbsRetriever):
                     pooling_method=config.get("pooling_method", "cls"),
                     trust_remote_code=config.get("trust_remote_code", True),
                     query_instruction_for_retrieval=config.get("query_instruction_for_retrieval"),
-                    use_fp16=config.get("use_fp16", False),
+                    use_fp16=False,
                     devices=devices
                 )
                 if self.model is None:
@@ -392,3 +394,16 @@ class DenseRetriever(AbsRetriever):
 
         # 返回 List[List[Hit]] 格式（只有一个列表，即聚合后的结果）
         return [final_hits]
+
+    def clear(self) -> None:
+        """
+        Remove on-disk index artifacts and reset in-memory index/pages.
+        """
+        try:
+            shutil.rmtree(self._index_dir(), ignore_errors=True)
+            os.makedirs(self._index_dir(), exist_ok=True)
+        except Exception as e:
+            print(f"[DenseRetriever] Failed to clear index dir: {e}")
+        self.pages = []
+        self.doc_emb = None
+        self.index = None

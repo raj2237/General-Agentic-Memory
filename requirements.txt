@@ -32,3 +32,14 @@ pytest>=7.0.0
 black>=23.0.0
 flake8>=6.0.0
 mypy>=1.0.0
+fastapi
+uvicorn[standard]
+python-multipart
+PyPDF2
+python-docx
+pypdf
+unstructured[all-docs]
+sentence-transformers
+rank-bm25
+redis
+pydantic-settings

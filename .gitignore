@@ -1,7 +1,16 @@
 # Byte-compiled / optimized / DLL files
-__pycache__/
 *.py[cod]
 *$py.class
+# Environment files
+.env
+**/.env
+
+# Python cache
+__pycache__/
+**/__pycache__/
+
+# Node modules (if applicable)
+node_modules/
 
 # C extensions
 *.so
@@ -269,6 +278,10 @@ typings/
 
 # Yarn Integrity file
 .yarn-integrity
+
+#Virtual environment
+agent-env/
+**/agent-env/
 
 # dotenv environment variables file
 .env
