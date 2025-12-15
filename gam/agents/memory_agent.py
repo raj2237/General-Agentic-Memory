@@ -83,6 +83,77 @@ class MemoryAgent:
 
         return MemoryUpdate(new_state=updated_state, new_page=page, debug={"decorated_page": decorated_new_page})
 
+    def memorize_batch(self, messages: list[str]) -> list[MemoryUpdate]:
+        """
+        Batch update long-term memory with multiples messages and persist decorated pages.
+        Crucially, this uses generator.generate_batch for parallel processing.
+        """
+        messages = [m.strip() for m in messages if m.strip()]
+        if not messages:
+            return []
+            
+        state = self.memory_store.load()
+        
+        # Prepare prompts for all messages
+        # Note: We use the same current memory state for all chunks in this batch
+        # This is the trade-off for parallelization
+        prompts = []
+        
+        # Build memory context from all abstracts (concatenate all memories)
+        if state.abstracts:
+            memory_context_lines = []
+            for i, abstract in enumerate(state.abstracts):
+                memory_context_lines.append(f"Page {i}: {abstract}")
+            memory_context = "\n".join(memory_context_lines)
+        else:
+            memory_context = "No memory currently."
+            
+        system_prompt = self.system_prompts.get("memory")
+        
+        for message in messages:
+            template_prompt = MemoryAgent_PROMPT.format(
+                input_message=message,
+                memory_context=memory_context
+            )
+            if system_prompt:
+                prompt = f"User Instructions: {system_prompt}\n\n System Prompt: {template_prompt}"
+            else:
+                prompt = template_prompt
+            prompts.append(prompt)
+            
+        # Generate all abstracts in parallel
+        try:
+            responses = self.generator.generate_batch(prompts=prompts)
+        except Exception as e:
+            print(f"Error generating batch abstracts: {e}")
+            # Fallback to empty abstracts on failure
+            responses = [{"text": m[:200]} for m in messages]
+            
+        results = []
+        for i, message in enumerate(messages):
+            abstract = responses[i].get("text", "").strip()
+            if not abstract:
+                abstract = message[:200]
+                
+            header = f"[ABSTRACT] {abstract}".strip()
+            decorated_new_page = f"{header}; {message}"
+            
+            # Update stores
+            self.memory_store.add(abstract)
+            page = Page(header=header, content=message, meta={"decorated": decorated_new_page})
+            self.page_store.add(page)
+            
+            # For result, we return the state as it is *after* this specific addition
+            # (Though in reality for the caller, only the final state might matter)
+            current_state = self.memory_store.load()
+            results.append(MemoryUpdate(
+                new_state=current_state,
+                new_page=page,
+                debug={"decorated_page": decorated_new_page}
+            ))
+            
+        return results
+
 
     # ---- Internal----
 

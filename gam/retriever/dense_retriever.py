@@ -2,10 +2,15 @@ import os
 import json
 import numpy as np
 import requests
+import warnings
 from typing import Dict, Any, List, Optional
 from FlagEmbedding import FlagAutoModel
 import faiss
 import shutil
+
+# Suppress warnings
+warnings.filterwarnings('ignore', category=UserWarning)
+warnings.filterwarnings('ignore', message='.*query_instruction_format.*')
 
 from gam.retriever.base import AbsRetriever
 from gam.schemas import InMemoryPageStore, Hit, Page
@@ -50,38 +55,30 @@ def _search_faiss_index(index: faiss.Index, query_embeddings: np.ndarray, top_k:
 class DenseRetriever(AbsRetriever):
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)
-        self.pages = None
         self.index = None
         self.doc_emb = None
+        self.num_pages = 0  # Track number of pages for validation
+        self.page_store = None  # Reference to page_store for getting snippets during search
         
         # 检查是否使用 API 模式
         self.api_url = config.get("api_url")  # 如 "http://localhost:8001"
         self.use_api = self.api_url is not None
         
         if self.use_api:
-            # API 模式：不加载本地模型
-            print(f"[DenseRetriever] 使用 API 模式: {self.api_url}")
+            # API mode
             self.model = None
-            # 测试连接
             try:
                 response = requests.get(f"{self.api_url}/health", timeout=5)
-                if response.status_code == 200:
-                    print(f"[DenseRetriever] API 服务连接成功: {response.json()}")
-                else:
-                    print(f"[DenseRetriever] 警告: API 服务响应异常: {response.status_code}")
+                if response.status_code != 200:
+                    print(f"[DenseRetriever] Warning: API service responded with status {response.status_code}")
             except Exception as e:
-                print(f"[DenseRetriever] 警告: 无法连接到 API 服务: {e}")
+                print(f"[DenseRetriever] Warning: Cannot connect to API service: {e}")
         else:
-            # 本地模式：加载模型
+            # Local mode
             model_name = config.get("model_name")
-            print(f"[DenseRetriever] 使用本地模式，加载模型: {model_name}")
             try:
-                # 检测是否有可用的 GPU
                 import torch
-                has_cuda = torch.cuda.is_available()
-                default_device = "cuda:0" if has_cuda else "cpu"
                 devices = "cpu"
-                print("Forced CPU Mode")
                 
                 self.model = FlagAutoModel.from_finetuned(
                     model_name,
@@ -94,8 +91,7 @@ class DenseRetriever(AbsRetriever):
                     devices=devices
                 )
                 if self.model is None:
-                    raise RuntimeError(f"模型加载失败：FlagAutoModel.from_finetuned() 返回了 None")
-                print(f"[DenseRetriever] 模型加载成功，使用设备: {devices}")
+                    raise RuntimeError(f"Model loading failed: FlagAutoModel.from_finetuned() returned None")
             except Exception as e:
                 error_msg = (
                     f"[DenseRetriever] 模型加载失败: {e}\n"
@@ -109,9 +105,6 @@ class DenseRetriever(AbsRetriever):
     # ---------- 内部小工具 ----------
     def _index_dir(self) -> str:
         return self.config["index_dir"]
-
-    def _pages_dir(self) -> str:
-        return os.path.join(self._index_dir(), "pages")
 
     def _emb_path(self) -> str:
         return os.path.join(self._index_dir(), "doc_emb.npy")
@@ -205,15 +198,22 @@ class DenseRetriever(AbsRetriever):
 
     def _encode_pages(self, pages: List[Page]) -> np.ndarray:
         # 和 build() / update() 保持一致的编码方式
-        # 处理可能的 None 值
         texts = []
         for p in pages:
             header = p.header if p.header is not None else ""
             content = p.content if p.content is not None else ""
             text = (header + " " + content).strip()
-            text = p.content
-            texts.append(text)
+            if text:
+                texts.append(text)
         
+        # Handle empty pages case
+        if not pages:
+            return np.array([], dtype=np.float32).reshape(0, 0)
+            
+        if not texts:
+            # Use single space as placeholder to avoid crash
+            texts = [" "] * len(pages)
+
         if self.use_api:
             # API 模式
             return self._encode_via_api(texts, encode_type="corpus")
@@ -221,100 +221,99 @@ class DenseRetriever(AbsRetriever):
             # 本地模式
             if self.model is None:
                 raise RuntimeError("DenseRetriever 模型未初始化，无法编码。请检查模型加载是否成功。")
-            return self.model.encode_corpus(
-                texts,
-                batch_size=self.config.get("batch_size", 32),
-                max_length=self.config.get("max_length", 512),
-            )
+            
+            try:
+                embeddings = self.model.encode_corpus(
+                    texts,
+                    batch_size=self.config.get("batch_size", 32),
+                    max_length=self.config.get("max_length", 512),
+                )
+                return embeddings
+            except Exception as e:
+                raise RuntimeError(f"Encoding failed: {e}")
 
     # ---------- 对外接口 ----------
     def load(self) -> None:
         """
         从磁盘恢复：
-        - pages 快照
         - doc_emb.npy
         - faiss 索引
+        Note: Pages are managed by the external page_store, not stored here
         """
         # 如果load失败，不抛死，只打印，这样ResearchAgent可以再走build()
         try:
-            # 读向量
             self.doc_emb = np.load(self._emb_path())
-            # 重建 index
             self.index = _build_faiss_index(self.doc_emb)
-            # 读 pages
-            self.pages = InMemoryPageStore.load(self._pages_dir()).load()
-        except Exception as e:
-            print("DenseRetriever.load() failed, will need build():", e)
+            self.num_pages = self.doc_emb.shape[0] if self.doc_emb.size > 0 else 0
+        except Exception:
+            pass  # Will build on first document
 
     def build(self, page_store: InMemoryPageStore) -> None:
         """
         全量重建向量索引。
+        Note: Pages are managed by page_store, we only build embeddings and index.
         """
-        os.makedirs(self._pages_dir(), exist_ok=True)
+        os.makedirs(self._index_dir(), exist_ok=True)
 
-        # 1. 把当前 page_store 取出来
-        self.pages = page_store.load()
+        # 1. Load pages from page_store
+        pages = page_store.load()
 
-        # 2. 全量编码
-        self.doc_emb = self._encode_pages(self.pages)
+        # 2. Encode all pages
+        self.doc_emb = self._encode_pages(pages)
 
-        # 3. 建 faiss 索引
+        # 3. Build faiss index
         self.index = _build_faiss_index(self.doc_emb)
+        
+        # 4. 记录页面数量和page_store引用
+        self.num_pages = len(pages)
+        self.page_store = page_store
 
-        # 4. 持久化
-        # 创建临时 PageStore 实例来保存
-        temp_page_store = InMemoryPageStore(dir_path=self._pages_dir())
-        temp_page_store.save(self.pages)
+        # 5. 持久化（只保存embeddings，不保存pages）
         np.save(self._emb_path(), self.doc_emb)
 
     def update(self, page_store: InMemoryPageStore) -> None:
         """
         增量更新：如果只是新增了一些 Page，或者后半段变了，
-        我们就只重新编码“变化起点”之后的部分，而不是全量重算。
+        我们就只重新编码"变化起点"之后的部分，而不是全量重算。
+        Note: Pages are managed by page_store, we only update embeddings and index.
         """
         # 如果我们还没有 build 过，就直接走 build
-        if not self.pages or self.doc_emb is None or self.index is None:
+        if self.doc_emb is None or self.index is None:
             self.build(page_store)
             return
 
         new_pages = page_store.load()
-        old_pages = self.pages
-
-        # 1. 找到第一个差异位置 diff_idx
-        max_shared = min(len(new_pages), len(old_pages))
-        diff_idx = max_shared  # 假设一开始完全一致
-        for i in range(max_shared):
-            if Page.equal(new_pages[i], old_pages[i]):
-                continue
-            diff_idx = i
-            break
-
-        # 2. 判断有没有实际变化
-        changed = (diff_idx < max_shared) or (len(new_pages) != len(old_pages))
-        if not changed:
-            # 完全没变，直接返回
+        old_num_pages = self.num_pages
+        
+        if len(new_pages) == old_num_pages:
+            return
+        
+        if len(new_pages) < old_num_pages:
+            # Pages decreased, need full rebuild
+            self.build(page_store)
             return
 
-        # 3. 我们保留前 diff_idx 段的老向量，后半段重新编码
-        keep_emb = self.doc_emb[:diff_idx]
+        # Only encode new pages
+        new_tail_pages = new_pages[old_num_pages:]
+        tail_emb = self._encode_pages(new_tail_pages)
 
-        tail_pages = new_pages[diff_idx:]
-        tail_emb = self._encode_pages(tail_pages)
+        # 拼接新旧embeddings
+        if self.doc_emb.size > 0:
+            new_doc_emb = np.concatenate([self.doc_emb, tail_emb], axis=0)
+        else:
+            new_doc_emb = tail_emb
 
-        new_doc_emb = np.concatenate([keep_emb, tail_emb], axis=0)
-
-        # 4. 重新建 faiss 索引
+        # 重新建 faiss 索引
         self.index = _build_faiss_index(new_doc_emb)
 
-        # 5. 持久化 + 刷内存
-        # 更新内存
-        self.pages = new_pages
+        # 更新内存状态
         self.doc_emb = new_doc_emb
+        self.num_pages = len(new_pages)
+        self.page_store = page_store
         
-        # 创建临时 PageStore 实例来保存
-        temp_page_store = InMemoryPageStore(dir_path=self._pages_dir())
-        temp_page_store.save(self.pages)
+        # 持久化（只保存embeddings）
         np.save(self._emb_path(), self.doc_emb)
+        print(f"[DenseRetriever.update] Update complete, total pages: {self.num_pages}")
 
     def search(self, query_list: List[str], top_k: int = 10) -> List[List[Hit]]:
         """
@@ -351,10 +350,16 @@ class DenseRetriever(AbsRetriever):
         for scores, indices in zip(scores_list, indices_list):
             for rank, (idx, sc) in enumerate(zip(indices, scores)):
                 idx_int = int(idx)
-                if idx_int < 0 or idx_int >= len(self.pages):
+                if idx_int < 0 or idx_int >= self.num_pages:
                     continue
-                page = self.pages[idx_int]
-                snippet = page.content
+                
+                # Get snippet from page_store if available
+                snippet = ""
+                if self.page_store:
+                    page = self.page_store.get(idx_int)
+                    if page:
+                        snippet = page.content
+                
                 page_id = str(idx_int)
                 score = float(sc)
 
@@ -397,13 +402,15 @@ class DenseRetriever(AbsRetriever):
 
     def clear(self) -> None:
         """
-        Remove on-disk index artifacts and reset in-memory index/pages.
+        Remove on-disk index artifacts and reset in-memory index.
+        Note: Pages are managed by external page_store, not cleared here.
         """
         try:
             shutil.rmtree(self._index_dir(), ignore_errors=True)
             os.makedirs(self._index_dir(), exist_ok=True)
         except Exception as e:
             print(f"[DenseRetriever] Failed to clear index dir: {e}")
-        self.pages = []
+        self.num_pages = 0
+        self.page_store = None
         self.doc_emb = None
         self.index = None

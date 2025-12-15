@@ -6,6 +6,7 @@ class Result(BaseModel):
     """Search and integration result"""
     content: str = Field("", description="Integrated content about the question")
     sources: List[Optional[str]] = Field(default_factory=list, description="List of page IDs of sources used")
+    retrieval_metadata: List[Dict[str, Any]] = Field(default_factory=list, description="Metadata about retrieved sources with scores")
 
     @classmethod
     def model_json_schema(cls) -> Dict[str, Any]:

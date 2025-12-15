@@ -38,12 +38,15 @@ class InMemoryPageStore:
                 with open(self._pages_file, 'r', encoding='utf-8') as f:
                     data = json.load(f)
                     if isinstance(data, list):
-                        return [Page(**page_data) for page_data in data]
+                        pages = [Page(**page_data) for page_data in data]
                     else:
-                        return [Page(**page_data) for page_data in data.get('pages', [])]
+                        pages = [Page(**page_data) for page_data in data.get('pages', [])]
+                    print(f"[PageStore] Loaded {len(pages)} pages from {self._pages_file}")
+                    return pages
             except (json.JSONDecodeError, KeyError, TypeError) as e:
                 print(f"Warning: Failed to load pages from {self._pages_file}: {e}")
                 return []
+        print(f"[PageStore] No file found, returning in-memory pages: {len(self._pages)}")
         return self._pages
 
     def save(self, pages: List[Page]) -> None:
@@ -54,15 +57,22 @@ class InMemoryPageStore:
                 pages_data = [page.model_dump() for page in pages]
                 with open(self._pages_file, 'w', encoding='utf-8') as f:
                     json.dump(pages_data, f, ensure_ascii=False, indent=2)
+                print(f"[PageStore] Saved {len(pages)} pages to {self._pages_file}")
             except Exception as e:
                 print(f"Warning: Failed to save pages to {self._pages_file}: {e}")
 
     def add(self, page: Page) -> None:
         self._pages.append(page)
+        print(f"[PageStore] Added page, total in memory: {len(self._pages)}")
         if self._dir_path:
             self.save(self._pages)
+            print(f"[PageStore] Saved to disk: {self._pages_file}")
 
     def get(self, index: int) -> Optional[Page]:
         if 0 <= index < len(self._pages):
             return self._pages[index]
         return None
+
+    def __len__(self) -> int:
+        """Return the number of pages in the store."""
+        return len(self._pages)

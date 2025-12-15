@@ -12,11 +12,12 @@ if not GROQ_API_KEY:
 
 MODEL_NAME = os.getenv("MODEL_NAME", "llama-3.1-8b-instant")
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "BAAI/bge-m3")
-MAX_RESEARCH_ITERS = int(os.getenv("MAX_RESEARCH_ITERS", "5"))
+MAX_RESEARCH_ITERS = int(os.getenv("MAX_RESEARCH_ITERS", "1"))
 
 # Storage locations (allow override via env, default under ./storage)
 DATA_DIR = os.getenv("DATA_DIR", "./storage")
 DENSE_INDEX_DIR = os.getenv("DENSE_INDEX_DIR", os.path.join(DATA_DIR, "index", "dense"))
+BM25_INDEX_DIR = os.getenv("BM25_INDEX_DIR", os.path.join(DATA_DIR, "index", "bm25"))
 MEMORY_STORE_DIR = os.getenv("MEMORY_STORE_DIR", os.path.join(DATA_DIR, "memory"))
 PAGE_STORE_DIR = os.getenv("PAGE_STORE_DIR", os.path.join(DATA_DIR, "pages"))
 
