@@ -29,7 +29,7 @@ async def chat_endpoint(request: dict):
             "detail": str(e)
         }, status_code=500)
 
-    # Debug: Check if documents are loaded (check BOTH page_store AND chunk_db)
+    # Check if documents are loaded (check BOTH page_store AND chunk_db)
     try:
         from storage.chunk_db import ChunkDB
         chunk_db = ChunkDB()

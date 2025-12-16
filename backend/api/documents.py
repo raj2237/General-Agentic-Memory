@@ -13,7 +13,7 @@ router = APIRouter(prefix="/api")
 # Initialize chunk database
 chunk_db = ChunkDB()
 
-# In-memory file history (could be persisted to disk/db later)
+
 file_history = []
 
 
@@ -80,9 +80,7 @@ async def upload_document(file: UploadFile = File(...), background_tasks: Backgr
         else:
             asyncio.create_task(_update_retrievers_background(doc_id, file.filename))
         
-        # Skip heavy memorization - it's too slow and not needed for basic chat!
-        # Memory agent can build abstracts on-demand during chat if needed
-
+        
         # Add to file history (preliminary status)
         file_entry = {
             "id": len(file_history) + 1,
@@ -198,8 +196,6 @@ async def _process_document_background(doc_id: str, chunks: list[str], filename:
         
         # Chunks are already in page_store from upload route, so skip that step
         
-        # Process chunks with batch summarization
-        # Note: memorize_batch runs in parallel threads internally
         print(f"[BACKGROUND] Memorizing {len(chunks)} chunks in parallel...")
         await asyncio.to_thread(memory_agent.memorize_batch, chunks)
         print(f"[BACKGROUND] ✅ Memorization complete for {filename}")

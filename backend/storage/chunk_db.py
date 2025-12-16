@@ -1,8 +1,5 @@
 """
 Chunk Database Module
-
-Fast SQLite-based storage for document chunks to improve upload speed.
-Stores all chunks immediately without waiting for embedding generation.
 """
 import sqlite3
 import json
