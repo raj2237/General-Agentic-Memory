@@ -5,7 +5,7 @@ tiktoken>=0.7.0
 tqdm>=4.65.0
 numpy>=1.23.0
 requests>=2.28.0
-
+dotenv
 # Dense Retriever - Semantic Search (Recommended)
 FlagEmbedding>=1.2.0
 faiss-cpu>=1.7.4
@@ -25,7 +25,7 @@ pyserini>=0.22.0
 vllm>=0.6.0
 torch>=2.0.0
 transformers>=4.30.0
-
+PyPDF2
 # Optional: Development Tools
 # Uncomment for development
 pytest>=7.0.0
