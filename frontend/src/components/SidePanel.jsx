@@ -3,7 +3,6 @@ import KnowledgeGraph from "./KnowledgeGraph";
 import ThinkingSteps from "./ThinkingSteps";
 import RetrievalDetails from "./RetrievalDetails";
 import Popup from "reactjs-popup";
-import "reactjs-popup/dist/index.css";
 
 export default function SidePanel({ graphData, currentThinkingSteps, messages }) {
     return (
@@ -23,7 +22,7 @@ export default function SidePanel({ graphData, currentThinkingSteps, messages })
                         <div className="popup-box">
                             <div className="popup-header">
                                 <h2>Graph Data</h2>
-                                <button onClick={close}>X</button>
+                                <button className="cancel-button" onClick={close}>X</button>
                             </div>
 
                             <KnowledgeGraph graphData={graphData} />
@@ -48,7 +47,7 @@ export default function SidePanel({ graphData, currentThinkingSteps, messages })
                         <div className="popup-box">
                             <div className="popup-header">
                                 <h2>thinking steps</h2>
-                                <button onClick={close}>X</button>
+                                <button className="cancel-button" onClick={close}>X</button>
                             </div>
 
                             <ThinkingSteps currentThinkingSteps={currentThinkingSteps} />
@@ -73,7 +72,7 @@ export default function SidePanel({ graphData, currentThinkingSteps, messages })
                         <div className="popup-box">
                             <div className="popup-header">
                                 <h2>thinking steps</h2>
-                                <button onClick={close}>X</button>
+                                <button className="cancel-button" onClick={close}>X</button>
                             </div>
 
                             <RetrievalDetails messages={messages} />

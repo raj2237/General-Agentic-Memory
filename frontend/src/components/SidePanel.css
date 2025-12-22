@@ -25,7 +25,12 @@
 
 .popup-header {
     display: flex;
+    flex-direction: row;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 12px;
+}
+
+.cancel-button {
+    color: #fff;
 }
